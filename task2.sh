@@ -1,49 +1,11 @@
 #!/bin/bash
 
-# IP_ADDRS=()
-# declare -A TIMES
-# PORTS=(21 22 23 53 79 80 123)
-# for i in {1..254}; do IP_ADDRS+=('192.168.3.'$i); done
-# HOST_INDEX=0
-# PORTS_INDEX=0
+echo "Enumerating hosts.."
+ip_addrs=($(nmap -sn -PS --scan-delay 250ms --max-rate 4 --max-retries 0 -oG - 192.168.3.0/24 | awk '$5=="Up" {print $2,"\n"}'))
 
-# HERE STARTS SPOOFING
-# function nmapConn {
-#
-#   if [ -z $2 ]; then
-#     # no port sent.. meaning we now need to jump HOST & reset PORTS.
-#     ((HOST_INDEX++))
-#     if [ $HOST_INDEX -gt 253 ]; then break; fi
-#     PORTS_INDEX=0
-#     set -- ${IP_ADDRS[$HOST_INDEX]} ${PORTS[$PORTS_INDEX]}
-#   fi
-#
-#   echo "Sending request to $1 for port $2"
-#   ((PORTS_INDEX++))
-# }
-#
-# while true; do
-#   for client in ${IP_ADDRS[@]}; do
-#     CURR_TIME=$(($(date +%s%N)/1000000))
-#     if [ -z ${TIMES[$client]} ]; then
-#       TIMES[$client]=$CURR_TIME
-#     else
-#       DIFF=$(($CURR_TIME-${TIMES[$client]}))
-#       if [ $DIFF -lt 500 ]; then
-#         echo "***************************** TOO QUICK ************************"
-#       fi
-#     fi
-#     echo "Acting as client $client..";
-#
-#     # We're done.
-#     if [ $HOST_INDEX -gt 253 ]; then
-#       break 2
-#     fi
-#     for i in 1 2; do
-#       nmapConn ${IP_ADDRS[$HOST_INDEX]} ${PORTS[$PORTS_INDEX]}
-#     done
-#   done
-# done
+for ((i = 0; i < ${#ip_addrs[@]}; i+=2)); do
+  nmap -Pn --disable-arp-ping -sS --scan-delay 250ms --max-rate 8 --max-retries 0 -n -p T:21,22,23,53,79,80,123 ${ip_addrs[$i]} ${ip_addrs[$i+1]}
+  sleep 0.5
+done
 
-# HERE STARTS NO SPOOFING
-nmap --packet-trace -v -d --max-hostgroup 2 --scan-delay 500ms --max-rate 2 -p T:21,22,23,53,79,80,123 192.168.3.0/24
+echo "Port scan finished. 2 IP's scanned at a time, full results above."
